@@ -3,7 +3,7 @@ import Table from "@cloudscape-design/components/table";
 import Input from "@cloudscape-design/components/input";
 import SpaceBetween from "@cloudscape-design/components/space-between";
 import Select from "@cloudscape-design/components/select";
-import pricingData from "../assets/index-current-version.json";
+import { useVerifiedPermissions } from "../hooks/useVerifiedPermissions";
 
 interface PricingItem {
   regionCode: string;
@@ -32,12 +32,21 @@ const SORT_OPTIONS: SortOption[] = [
 ];
 
 const GlobalPricingTable: React.FC<Props> = ({ selectedService }) => {
+  const { data: pricingData, loading, error } = useVerifiedPermissions('index-current-version');
   const [searchText, setSearchText] = useState("");
   const [sortOption, setSortOption] = useState<SortOption>(SORT_OPTIONS[0]);
 
   // Extract all pricing data for the selected service
   const allPricing: PricingItem[] = useMemo(() => {
-    if (!selectedService || !pricingData.products || !pricingData.terms || !pricingData.terms.OnDemand) return [];
+    if (
+      !selectedService ||
+      loading ||
+      error ||
+      !pricingData?.products ||
+      !pricingData.terms ||
+      !pricingData.terms.OnDemand
+    )
+      return [];
     const items: PricingItem[] = [];
     for (const [productSku, product] of Object.entries<any>(pricingData.products)) {
       const regionCode = product?.attributes?.regionCode;
@@ -69,7 +78,7 @@ const GlobalPricingTable: React.FC<Props> = ({ selectedService }) => {
       }
     }
     return items;
-  }, [selectedService]);
+  }, [selectedService, pricingData, loading, error]);
 
   // Global search filter: match any relevant field
   const filteredItems = useMemo(() => {
@@ -112,6 +121,18 @@ const GlobalPricingTable: React.FC<Props> = ({ selectedService }) => {
     { id: "price", header: "Price (USD)", cell: (item: PricingItem) => item.price.toFixed(6) },
     { id: "unit", header: "Unit", cell: (item: PricingItem) => item.unit },
   ];
+
+  if (loading || error) {
+    return (
+      <SpaceBetween size="m">
+        <span>
+          {loading
+            ? "Loading global pricing data..."
+            : "Failed to load global pricing data."}
+        </span>
+      </SpaceBetween>
+    );
+  }
 
   return (
     <SpaceBetween size="m">

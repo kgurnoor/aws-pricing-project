@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { GoogleGenerativeAI } from "@google/genai";
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -38,24 +38,25 @@ const ChatbotModal: React.FC<ChatbotModalProps> = ({ visible, onClose }) => {
   const handleSend = async () => {
     if (!input.trim()) return;
     const userMessage: Message = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]); 
     setInput("");
     setLoading(true);
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const result = await model.generateContent([
-        ...messages.map((m) => ({
-          role: m.role === "user" ? "user" : "model",
-          parts: [{ text: m.content }],
+      const chat = model.startChat({
+        history: messages.map((msg) => ({
+          role: msg.role === "user" ? "user" : "model",
+          parts: [{ text: msg.content }],
         })),
-        { role: "user", parts: [{ text: input }] },
-      ]);
-      const response = result.response.text();
+      });
+      const result = await chat.sendMessage(input);
+      const response = await result.response;
+      const text = response.text();
       setMessages((prev) => [
         ...prev,
-        { role: "bot", content: response || "Sorry, I couldn't get a response." },
+        { role: "bot", content: text || "Sorry, I couldn't get a response." },
       ]);
     } catch (err) {
       setMessages((prev) => [

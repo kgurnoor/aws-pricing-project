@@ -9,12 +9,12 @@ import RegionSelector from "./features/RegionSelector";
 import ProductSelector from "./features/ProductSelector";
 import DurationSelector from "./features/DurationSelector";
 import PricingTable from "./features/PricingTable";
-import GlobalPricingTable from "./features/GlobalPricingTable"; // <-- ADD THIS IMPORT
+import GlobalPricingTable from "./features/GlobalPricingTable";
 import Box from "@cloudscape-design/components/box";
 import NavBar from "./components/NavBar";
 import HelpBar from "./components/HelpBar";
 import ErrorBoundary from "./components/ErrorBoundary";
-import versionData from "./assets/index-version.json";
+import { useVerifiedPermissions } from "./hooks/useVerifiedPermissions";
 import { useState } from "react";
 
 function App() {
@@ -25,7 +25,10 @@ function App() {
   const [selectedDuration, setSelectedDuration] = useState<any>(null);
   const [showPricingTable, setShowPricingTable] = useState(false);
   const [showDiscounts, setShowDiscounts] = useState(false);
-  const [showGlobalSearch, setShowGlobalSearch] = useState(false); // <-- ADD THIS STATE
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+
+  // Dynamic version data from backend
+  const { data: versionData, loading: versionLoading, error: versionError } = useVerifiedPermissions('index-version');
 
   const handleShowPricing = () => setShowPricingTable(true);
 
@@ -71,6 +74,7 @@ function App() {
   const serviceName = selectedService?.label || "this service";
   const selectedVersionInfo =
     selectedVersion &&
+    versionData &&
     versionData.versions &&
     typeof selectedVersion.value === "string" &&
     Object.prototype.hasOwnProperty.call(versionData.versions, selectedVersion.value)

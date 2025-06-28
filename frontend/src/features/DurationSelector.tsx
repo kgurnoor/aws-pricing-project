@@ -1,4 +1,6 @@
+// DurationSelector.tsx
 import Select from "@cloudscape-design/components/select";
+import { useDurations } from "../hooks/useDurations";
 
 type DurationOption = { label?: string; value?: string };
 
@@ -7,20 +9,20 @@ interface Props {
   setSelectedDuration: (duration: DurationOption | null) => void;
 }
 
-const durationOptions: DurationOption[] = [
-  { label: "On-Demand", value: "OnDemand" },
-  // Add reserved/spot options here in the future
-];
+const DurationSelector: React.FC<Props> = ({ selectedDuration, setSelectedDuration }) => {
+  const { durations, loading, error } = useDurations();
 
-const DurationSelector: React.FC<Props> = ({ selectedDuration, setSelectedDuration }) => (
-  <Select
-    selectedOption={selectedDuration}
-    onChange={({ detail }) => setSelectedDuration(detail.selectedOption)}
-    options={durationOptions}
-    placeholder="Select Duration"
-    selectedAriaLabel="Selected duration"
-    filteringType="auto"
-  />
-);
+  return (
+    <Select
+      selectedOption={selectedDuration}
+      onChange={({ detail }) => setSelectedDuration(detail.selectedOption)}
+      options={durations}
+      placeholder={loading ? "Loading..." : error ? "Failed to load durations" : "Select Duration"}
+      selectedAriaLabel="Selected duration"
+      filteringType="auto"
+      disabled={loading || !!error}
+    />
+  );
+};
 
 export default DurationSelector;

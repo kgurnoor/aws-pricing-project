@@ -4,7 +4,7 @@ import Input from "@cloudscape-design/components/input";
 import Box from "@cloudscape-design/components/box";
 import SpaceBetween from "@cloudscape-design/components/space-between";
 import Select from "@cloudscape-design/components/select";
-import pricingData from "../../assets/index-current-version.json";
+import { useVerifiedPermissions } from "../../hooks/useVerifiedPermissions";
 
 interface PricingItem {
   regionCode: string;
@@ -39,76 +39,82 @@ const VerifiedPermissionsTable: React.FC<Props> = ({
   selectedDuration,
   versionInfo = {},
 }) => {
-  if (
+  const { data: pricingData, loading, error } = useVerifiedPermissions('index-current-version');
+
+  // HOOKS MUST BE CALLED UNCONDITIONALLY
+  const [searchText, setSearchText] = useState("");
+  const [sortOption, setSortOption] = useState<SortOption>(SORT_OPTIONS[0]);
+
+  // Only show error/empty/loading after hooks are called
+  const showErrorOrEmpty =
     !Array.isArray(selectedRegions) ||
     !Array.isArray(selectedProducts) ||
     !selectedDuration ||
+    loading ||
+    error ||
     !pricingData ||
     !pricingData.products ||
     !pricingData.terms ||
     !pricingData.terms.OnDemand ||
     selectedRegions.length === 0 ||
-    selectedProducts.length === 0
-  ) {
-    return (
-      <Box color="text-status-error">
-        No pricing data for this selection.
-      </Box>
-    );
-  }
-
-  const [searchText, setSearchText] = useState("");
-  const [sortOption, setSortOption] = useState<SortOption>(SORT_OPTIONS[0]);
+    selectedProducts.length === 0;
 
   // Extract and group pricing data
-  const pricing: PricingItem[] = [];
-  try {
-    for (const [productSku, product] of Object.entries<any>(pricingData.products)) {
-      const regionCode = product?.attributes?.regionCode;
-      if (!selectedRegions.some(region => region.value === regionCode)) continue;
-      const usagetype = product?.attributes?.usagetype || productSku;
-      if (!selectedProducts.some(product => product.value === usagetype)) continue;
-      if (selectedDuration.value !== "OnDemand") continue;
-      const location = product?.attributes?.location;
-      const onDemandTerms = (pricingData.terms.OnDemand as Record<string, any>)[productSku];
-      if (onDemandTerms) {
-        for (const termKey of Object.keys(onDemandTerms)) {
-          const priceDimensions = onDemandTerms[termKey]?.priceDimensions;
-          if (!priceDimensions) continue;
-          for (const priceDimKey of Object.keys(priceDimensions)) {
-            const priceDimension = priceDimensions[priceDimKey];
-            if (
-              priceDimension &&
-              priceDimension.pricePerUnit &&
-              priceDimension.pricePerUnit.USD !== undefined
-            ) {
-              pricing.push({
-                regionCode,
-                location,
-                price: parseFloat(priceDimension.pricePerUnit.USD),
-                unit: priceDimension.unit,
-                description: priceDimension.description,
-                usagetype,
-              });
+  const pricing: PricingItem[] = useMemo(() => {
+    if (showErrorOrEmpty) return [];
+    const result: PricingItem[] = [];
+    try {
+      for (const [productSku, product] of Object.entries<any>(pricingData.products)) {
+        const regionCode = product?.attributes?.regionCode;
+        if (!selectedRegions.some(region => region.value === regionCode)) continue;
+        const usagetype = product?.attributes?.usagetype || productSku;
+        if (!selectedProducts.some(product => product.value === usagetype)) continue;
+        if (selectedDuration.value !== "OnDemand") continue;
+        const location = product?.attributes?.location;
+        const onDemandTerms = (pricingData.terms.OnDemand as Record<string, any>)[productSku];
+        if (onDemandTerms) {
+          for (const termKey of Object.keys(onDemandTerms)) {
+            const priceDimensions = onDemandTerms[termKey]?.priceDimensions;
+            if (!priceDimensions) continue;
+            for (const priceDimKey of Object.keys(priceDimensions)) {
+              const priceDimension = priceDimensions[priceDimKey];
+              if (
+                priceDimension &&
+                priceDimension.pricePerUnit &&
+                priceDimension.pricePerUnit.USD !== undefined
+              ) {
+                result.push({
+                  regionCode,
+                  location,
+                  price: parseFloat(priceDimension.pricePerUnit.USD),
+                  unit: priceDimension.unit,
+                  description: priceDimension.description,
+                  usagetype,
+                });
+              }
             }
           }
         }
       }
+    } catch (err) {
+      // If you want to handle extraction errors, you can set a state here or log as needed
+      console.error("Error extracting pricing data:", err);
     }
-  } catch (err) {
-    console.error("Error extracting pricing data:", err);
-    return <Box color="text-status-error">Error extracting pricing data.</Box>;
-  }
+    return result;
+  }, [pricingData, selectedRegions, selectedProducts, selectedDuration, showErrorOrEmpty]);
 
   // Group by SKU (usagetype) and show min-max price range for each
-  const skuGroups: Record<string, PricingItem[]> = {};
-  pricing.forEach(item => {
-    const key = item.usagetype || "";
-    if (!skuGroups[key]) skuGroups[key] = [];
-    skuGroups[key].push(item);
-  });
+  const skuGroups: Record<string, PricingItem[]> = useMemo(() => {
+    const groups: Record<string, PricingItem[]> = {};
+    pricing.forEach(item => {
+      const key = item.usagetype || "";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(item);
+    });
+    return groups;
+  }, [pricing]);
 
-  let rows = Object.entries(skuGroups).map(([sku, items]) => {
+  let rows = useMemo(() => Object.entries(skuGroups).map(([sku, items]) => {
     const prices = items.map(i => i.price);
     const min = Math.min(...prices);
     const max = Math.max(...prices);
@@ -122,7 +128,7 @@ const VerifiedPermissionsTable: React.FC<Props> = ({
       maxPrice: max,
       unit: items[0]?.unit,
     };
-  });
+  }), [skuGroups]);
 
   // SEARCH: filter rows based on searchText
   const filteredRows = useMemo(() => {
@@ -182,6 +188,18 @@ const VerifiedPermissionsTable: React.FC<Props> = ({
           : "N/A",
     },
   ];
+
+  if (showErrorOrEmpty) {
+    return (
+      <Box color="text-status-error">
+        {loading
+          ? "Loading pricing data..."
+          : error
+          ? "Failed to load pricing data."
+          : "No pricing data for this selection."}
+      </Box>
+    );
+  }
 
   return (
     <SpaceBetween size="m">

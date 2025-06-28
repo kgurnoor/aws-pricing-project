@@ -1,5 +1,5 @@
 import Multiselect from "@cloudscape-design/components/multiselect";
-import regionData from "../assets/index-current-region.json";
+import { useVerifiedPermissions } from "../hooks/useVerifiedPermissions";
 
 type RegionOption = { label?: string; value?: string };
 
@@ -9,12 +9,17 @@ interface Props {
 }
 
 const RegionSelector: React.FC<Props> = ({ selectedRegions, setSelectedRegions }) => {
-  const allOptions: RegionOption[] = Object.entries((regionData as any).regions)
-    .map(([key, value]: [string, any]) => ({
-      label: value.regionCode,
-      value: key,
-    }))
-    .sort((a, b) => (a.label || "").localeCompare(b.label || ""));
+  const { data: regionData, loading, error } = useVerifiedPermissions('index-current-region');
+
+  const allOptions: RegionOption[] =
+    !loading && !error && regionData?.regions
+      ? Object.entries(regionData.regions)
+          .map(([key, value]: [string, any]) => ({
+            label: value.regionCode,
+            value: key,
+          }))
+          .sort((a, b) => (a.label || "").localeCompare(b.label || ""))
+      : [];
 
   // "Select All" logic
   const selectAllOption: RegionOption = { label: "Select All", value: "__ALL__" };
@@ -34,9 +39,16 @@ const RegionSelector: React.FC<Props> = ({ selectedRegions, setSelectedRegions }
       selectedOptions={selectedRegions}
       onChange={handleChange}
       options={options}
-      placeholder="Select Regions"
+      placeholder={
+        loading
+          ? "Loading..."
+          : error
+          ? "Failed to load regions"
+          : "Select Regions"
+      }
       selectedAriaLabel="Selected regions"
       filteringType="auto"
+      disabled={loading || !!error}
       // Default behavior: dropdown closes after each selection (AWS-style)
     />
   );
