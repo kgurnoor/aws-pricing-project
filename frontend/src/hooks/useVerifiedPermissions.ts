@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchVerifiedPermissionsFile } from '../api/verifiedPermissionsApi';
+import { fetchVerifiedPermissionsFile } from '../../api/verifiedPermissionsApi';
 
 export function useVerifiedPermissions(file: 'index-version' | 'index-current-version' | 'index-current-region') {
   const [data, setData] = useState<any>(null);

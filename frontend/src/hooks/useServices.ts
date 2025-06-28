@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchAllServices } from '../api/servicesApi';
+import { fetchAllServices } from '../../api/servicesApi';
 
 // Define the structure for better type safety
 interface ServicesData {

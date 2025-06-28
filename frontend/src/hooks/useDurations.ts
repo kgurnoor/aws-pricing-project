@@ -1,6 +1,6 @@
 // src/hooks/useDurations.ts
 import { useState, useEffect } from "react";
-import { fetchDurations } from "../api/durationApi";
+import { fetchDurations } from "../../api/durationApi";
 
 type DurationOption = { label?: string; value?: string };
 
