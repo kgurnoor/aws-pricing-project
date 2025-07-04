@@ -28,7 +28,7 @@ function App() {
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
 
   // Dynamic version data from backend
-  const { data: versionData, loading: versionLoading, error: versionError } = useVerifiedPermissions('index-version');
+const { data: versionData } = useVerifiedPermissions('index-version');
 
   const handleShowPricing = () => setShowPricingTable(true);
 
