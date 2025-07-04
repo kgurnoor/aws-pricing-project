@@ -1,7 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+import Modal from "@cloudscape-design/components/modal";
+import Input from "@cloudscape-design/components/input";
+import Button from "@cloudscape-design/components/button";
+import Spinner from "@cloudscape-design/components/spinner";
+import SpaceBetween from "@cloudscape-design/components/space-between";
+import Box from "@cloudscape-design/components/box";
+import { fetchChatbotReply } from "../../api/chatbotApi";
 
 interface Message {
   role: "user" | "bot";
@@ -38,25 +42,15 @@ const ChatbotModal: React.FC<ChatbotModalProps> = ({ visible, onClose }) => {
   const handleSend = async () => {
     if (!input.trim()) return;
     const userMessage: Message = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMessage]); 
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
 
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const chat = model.startChat({
-        history: messages.map((msg) => ({
-          role: msg.role === "user" ? "user" : "model",
-          parts: [{ text: msg.content }],
-        })),
-      });
-      const result = await chat.sendMessage(input);
-      const response = await result.response;
-      const text = response.text();
+      const reply = await fetchChatbotReply([...messages, userMessage]);
       setMessages((prev) => [
         ...prev,
-        { role: "bot", content: text || "Sorry, I couldn't get a response." },
+        { role: "bot", content: reply || "Sorry, I couldn't get a response." },
       ]);
     } catch (err) {
       setMessages((prev) => [
@@ -71,114 +65,46 @@ const ChatbotModal: React.FC<ChatbotModalProps> = ({ visible, onClose }) => {
   if (!visible) return null;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        background: "rgba(0,0,0,0.3)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 400,
-          background: "#fff",
-          borderRadius: 8,
-          boxShadow: "0 0 24px rgba(0,0,0,0.2)",
-          padding: 24,
-          position: "relative",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          style={{
-            position: "absolute",
-            top: 12,
-            right: 12,
-            background: "none",
-            border: "none",
-            fontSize: 20,
-            cursor: "pointer",
-          }}
-          onClick={onClose}
-        >
-          ×
-        </button>
-        <div
-          style={{
-            maxHeight: 350,
-            overflowY: "auto",
-            marginBottom: 16,
-          }}
-        >
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              style={{
-                textAlign: msg.role === "user" ? "right" : "left",
-                margin: "8px 0",
-              }}
-            >
-              <span
-                style={{
-                  display: "inline-block",
-                  padding: "8px 12px",
-                  borderRadius: 12,
-                  background:
-                    msg.role === "user" ? "#d1e7fd" : "#f1f1f1",
-                  color: "#222",
-                  maxWidth: "80%",
-                  wordBreak: "break-word",
-                }}
-              >
-                {msg.content}
-              </span>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
+    <Modal
+      visible={visible}
+      onDismiss={onClose}
+      header="AWS Pricing Assistant"
+      footer={
+        <SpaceBetween direction="horizontal" size="xs">
+          <Input
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={({ detail }) => setInput(detail.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleSend();
+              // Cloudscape Input uses e.detail.key, not e.key
+              // TypeScript workaround for the custom event type
+              if ((e as any).detail?.key === "Enter") handleSend();
             }}
             placeholder="Type your question..."
-            style={{
-              flex: 1,
-              padding: 8,
-              borderRadius: 8,
-              border: "1px solid #ccc",
-            }}
             disabled={loading}
           />
-          <button
-            onClick={handleSend}
-            disabled={loading || !input.trim()}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 8,
-              border: "none",
-              background: "#0070f3",
-              color: "#fff",
-              cursor: "pointer",
-            }}
-          >
-            {loading ? "..." : "Send"}
-          </button>
-        </div>
+          <Button onClick={handleSend} disabled={loading || !input.trim()}>
+            {loading ? <Spinner /> : "Send"}
+          </Button>
+        </SpaceBetween>
+      }
+    >
+      <div style={{ maxHeight: 350, overflowY: "auto" }}>
+        {messages.map((msg, idx) => (
+          <Box key={idx} margin={{ bottom: "xs" }}>
+            <span
+              style={{
+                color: msg.role === "user" ? "#0070f3" : "#444",
+                fontWeight: "bold",
+              }}
+            >
+              {msg.role === "user" ? "You" : "Bot"}:
+            </span>{" "}
+            {msg.content}
+          </Box>
+        ))}
+        <div ref={messagesEndRef} />
       </div>
-    </div>
+    </Modal>
   );
 };
 

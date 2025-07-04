@@ -12,8 +12,6 @@
   "dependencies": {
     "@cloudscape-design/components": "^3.0.1003",
     "@cloudscape-design/global-styles": "^1.0.44",
-    "@google/genai": "^1.5.1",
-    "@google/generative-ai": "^0.24.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
